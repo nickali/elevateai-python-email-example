@@ -1,0 +1,3 @@
+[submodule "ElevateAI"]
+	path = ElevateAI
+	url = https://github.com/NICEElevateAI/ElevateAIPythonSDK

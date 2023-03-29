@@ -152,7 +152,7 @@ def real_work(attach_path, file_name, config):
   fileName = file_name
 
   #Step 1,2
-  declareResp = ElevateAI.DeclareAudioInteraction(langaugeTag, vert, None, token, transcriptionMode, False)
+  declareResp = ElevateAI.DeclareAudioInteraction(langaugeTag, vert, None, token, transcriptionMode, True)
 
   declareJson = declareResp.json()
 
@@ -174,6 +174,10 @@ def real_work(attach_path, file_name, config):
   #Step 6
   #get results after file is processed 
   getPuncutatedTranscriptResponse = ElevateAI.GetPuncutatedTranscript(interactionId, token)
+  getAIResultsResponse = ElevateAI.GetAIResults(interactionId, token)
+
+  json_formatted_AI_str = json.dumps(getAIResultsResponse.json(), indent=4)
+  print(json_formatted_AI_str)
 
   json_formatted_str = json.dumps(getPuncutatedTranscriptResponse.json(), indent=4)
   parsed_transcription = print_conversation(json_formatted_str)

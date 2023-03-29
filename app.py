@@ -21,7 +21,7 @@ def get_newest_email_attachment(config):
     imap_password = config['imap_password']
     imap = imaplib.IMAP4_SSL(imap_server)
     imap.login(imap_username, imap_password)
-    print("Logged in to IMAP server")
+    print("Logged into IMAP server")
 
     # Select the INBOX folder
     imap.select("INBOX")
@@ -57,8 +57,6 @@ def get_newest_email_attachment(config):
 
     # Get the sender email address
     sender_address = email.utils.parseaddr(email_message['From'])[1]
-    print(sender_address)
-    print(attachment_path)
 
     # Log out of the IMAP server
     imap.close()
@@ -68,15 +66,10 @@ def get_newest_email_attachment(config):
 
 
 def send_email_with_attachment(attachment_path, recipient_address, smtp_server, smtp_username, smtp_password):
-  print("sending email....")
-  print(attachment_path)
-  print(smtp_server)
-  print("SMPT logging in...")
+
   # Log in to the SMTP server
   smtp = smtplib.SMTP_SSL(smtp_server)
-  print("opened smtp")
   smtp.ehlo()
-  print("sent hello")
   smtp.login(smtp_username, smtp_password)
   print("SMTP logged in.")
   # Create a message object
@@ -91,10 +84,9 @@ def send_email_with_attachment(attachment_path, recipient_address, smtp_server, 
     attachment.add_header('Content-Disposition', 'attachment', filename=os.path.basename(attachment_path))
     message.attach(attachment)
 
-  print("about to send email")
   # Send the message
   smtp.send_message(message)
-  print("email sent")
+
   # Log out of the SMTP server
   smtp.quit()
 
@@ -110,7 +102,7 @@ def print_conversation(json_str):
   participantTwo_phrases = ""
   tmp_folder = tempfile.mkdtemp()
   attachment_path = os.path.join(tmp_folder, filename)
-  print(attachment_path)
+  print("=== Begin Transcription Output ===\n\n")
   with open(attachment_path, 'w') as f:
     # Loop through the sentenceSegments list and accumulate phrases for each participant
     for segment in data['sentenceSegments']:
@@ -124,11 +116,9 @@ def print_conversation(json_str):
             p1 = participantOne_phrases.strip()
             p2 = participantTwo_phrases.strip()
             if p1:
-              print(len(p1))
               print("participantOne:\n" + p1 + "\n")
               f.write("participantOne:\n" + p1 + "\n\n")
             if p2:
-              print(len(p2))
               print("participantTwo:\n" + p2 + "\n")
               f.write("participantTwo:\n" + p2 + "\n\n")
             participantOne_phrases = ""
@@ -145,9 +135,10 @@ def print_conversation(json_str):
       print("participantTwo:\n" + p2 + "\n")
       f.write("participantTwo:\n" + p2 + "\n\n")
 
+    print("=== End Transcription Output ===\n\n")
+
   f.close()
-  print("from print_conversation: ")
-  print(attachment_path)
+
   return attachment_path
 
 def real_work(attach_path, file_name, config):
@@ -166,11 +157,11 @@ def real_work(attach_path, file_name, config):
   declareJson = declareResp.json()
 
   interactionId = declareJson["interactionIdentifier"]
-  print("Token:")
-  print(interactionId)
+  print("Interaction Identifier: " + interactionId)
 
   #Step  3
   uploadInteractionResponse =  ElevateAI.UploadInteraction(interactionId, token, localFilePath, fileName)
+
   #Step 4
   #Loop over status until processed
   while True:
@@ -182,9 +173,7 @@ def real_work(attach_path, file_name, config):
 
   #Step 6
   #get results after file is processed 
-#  getWordByWordTranscriptResponse = ElevateAI.GetWordByWordTranscript(interactionId, token)
   getPuncutatedTranscriptResponse = ElevateAI.GetPuncutatedTranscript(interactionId, token)
-#  getAIResultsResponse = ElevateAI.GetAIResults(interactionId, token)
 
   json_formatted_str = json.dumps(getPuncutatedTranscriptResponse.json(), indent=4)
   parsed_transcription = print_conversation(json_formatted_str)

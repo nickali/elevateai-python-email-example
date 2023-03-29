@@ -1,4 +1,4 @@
-import ElevateAI
+from ElevateAI import ElevateAI
 import json
 import time
 import email
@@ -180,17 +180,13 @@ def real_work(attach_path, file_name, config):
           break
     time.sleep(15)
 
-
   #Step 6
   #get results after file is processed 
-  getWordByWordTranscriptResponse = ElevateAI.GetWordByWordTranscript(interactionId, token)
+#  getWordByWordTranscriptResponse = ElevateAI.GetWordByWordTranscript(interactionId, token)
   getPuncutatedTranscriptResponse = ElevateAI.GetPuncutatedTranscript(interactionId, token)
-  getAIResultsResponse = ElevateAI.GetAIResults(interactionId, token)
+#  getAIResultsResponse = ElevateAI.GetAIResults(interactionId, token)
 
-  f = open("punctuated.txt", "w")
   json_formatted_str = json.dumps(getPuncutatedTranscriptResponse.json(), indent=4)
-  f.write(json_formatted_str)
-  f.close()
   parsed_transcription = print_conversation(json_formatted_str)
 
   return parsed_transcription

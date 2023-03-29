@@ -1,0 +1,11 @@
+{
+  "api_token": "Get from https://www.elevateai.com"
+  "imap_server": "imap.domain.com"
+  "imap_username": "hello@domain.com"
+  "imap_password": "hopefully some long random password"
+  "smtp_server": "smtp.domain.com"
+  "smtp_username": "bob@domain.com"
+  "smtp_password": "hopefully another long random password"
+  "from_email": "bob@domain.com"
+}
+

@@ -10,25 +10,26 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import tempfile
 import sys
+import traceback
 
 def get_newest_email_attachment(config):
     # Create temporary directory to save attachment
     tmp_folder = tempfile.mkdtemp()
     file_name = ''
+
     # Log in to the IMAP server
     imap_server = config['imap_server']
     imap_username = config['imap_username']
     imap_password = config['imap_password']
     imap = imaplib.IMAP4_SSL(imap_server)
     imap.login(imap_username, imap_password)
-    print("Logged into IMAP server")
 
     # Select the INBOX folder
     imap.select("INBOX")
 
     # Search for the newest email message with an attachment
     search_criteria = 'DATE'
-    result, data = imap.sort(search_criteria, 'UTF-8', 'ALL')
+    result, data = imap.sort(search_criteria, 'UTF-8', 'SUBJECT "Transcribe"')
     latest_email_id = data[0].split()[-1]
 
     # Fetch the email message and extract the attachment
@@ -57,7 +58,7 @@ def get_newest_email_attachment(config):
 
     # Get the sender email address
     sender_address = email.utils.parseaddr(email_message['From'])[1]
-
+    
     # Log out of the IMAP server
     imap.close()
     imap.logout()
@@ -65,13 +66,18 @@ def get_newest_email_attachment(config):
     return attachment_path, file_name, sender_address
 
 
-def send_email_with_attachment(attachment_path, recipient_address, smtp_server, smtp_username, smtp_password):
+def send_email_with_attachment(attachment_path, recipient_address, config):
+
+  smtp_server = config["smtp_server"]
+  smtp_username = config["smtp_username"]
+  smtp_password = config["smtp_password"]
 
   # Log in to the SMTP server
   smtp = smtplib.SMTP_SSL(smtp_server)
   smtp.ehlo()
   smtp.login(smtp_username, smtp_password)
   print("SMTP logged in.")
+
   # Create a message object
   message = MIMEMultipart()
   message['From'] = smtp_username
@@ -91,8 +97,6 @@ def send_email_with_attachment(attachment_path, recipient_address, smtp_server, 
   smtp.quit()
 
 
-
-
 def print_conversation(json_str):
   data = json.loads(json_str)
   filename = 'transcript.txt'
@@ -103,6 +107,7 @@ def print_conversation(json_str):
   tmp_folder = tempfile.mkdtemp()
   attachment_path = os.path.join(tmp_folder, filename)
   print("=== Begin Transcription Output ===\n\n")
+
   with open(attachment_path, 'w') as f:
     # Loop through the sentenceSegments list and accumulate phrases for each participant
     for segment in data['sentenceSegments']:
@@ -141,7 +146,7 @@ def print_conversation(json_str):
 
   return attachment_path
 
-def real_work(attach_path, file_name, config):
+def process_attachment(attach_path, file_name, config):
 
   #Prereq - make sure you create a free account @ https://app.elevateai.com - this will let you generate a token
   token = config["api_token"]
@@ -151,18 +156,18 @@ def real_work(attach_path, file_name, config):
   localFilePath = attach_path
   fileName = file_name
 
-  #Step 1,2
+  
   declareResp = ElevateAI.DeclareAudioInteraction(langaugeTag, vert, None, token, transcriptionMode, True)
 
   declareJson = declareResp.json()
 
   interactionId = declareJson["interactionIdentifier"]
-  print("Interaction Identifier: " + interactionId)
 
-  #Step  3
+  if (localFilePath is None):
+    raise Exception('Something wrong with attachment')
+
   uploadInteractionResponse =  ElevateAI.UploadInteraction(interactionId, token, localFilePath, fileName)
 
-  #Step 4
   #Loop over status until processed
   while True:
     getInteractionStatusResponse = ElevateAI.GetInteractionStatus(interactionId,token)
@@ -171,8 +176,6 @@ def real_work(attach_path, file_name, config):
           break
     time.sleep(15)
 
-  #Step 6
-  #get results after file is processed 
   getPuncutatedTranscriptResponse = ElevateAI.GetPuncutatedTranscript(interactionId, token)
   getAIResultsResponse = ElevateAI.GetAIResults(interactionId, token)
 
@@ -210,47 +213,34 @@ def read_config(filename):
 
 def main():
   
-
     config = read_config('config.json')
-
-    imap_server = config["imap_server"]
-    imap_username = config["imap_username"]
-    imap_password = config["imap_password"]
-    smtp_server = config["smtp_server"]
-    smtp_username = config["smtp_username"]
-    smtp_password = config["smtp_password"]
 
     # Get the newest email attachment
     try:
         attach_path, filename, sender = get_newest_email_attachment(config)
     except imaplib.IMAP4.error:
         print('\nError connecting to the IMAP server or retrieving the email\n')
+        traceback.print_exc()
         return
 
     # Process the attachment and generate transcript
     try:
-        transcript = real_work(attach_path, filename, config)
+        transcript = process_attachment(attach_path, filename, config)
     except:
-        print('\nError in transcribing\n')
+        print('\nError in transcribing:\n')
+        traceback.print_exc()
         return
     
     if not os.path.exists(transcript):
         print('\nError finding the transcription file to send\n')
         return
 
-
     # Send email with transcript attachment
     try:
-        send_email_with_attachment(
-            transcript, 
-            sender, 
-            config['smtp_server'], 
-            config['smtp_username'], 
-            config['smtp_password']
-        )
+        send_email_with_attachment(transcript, sender, config)
     except smtplib.SMTPException:
         print('\nError sending email through the SMTP server\n')
+        traceback.print_exc()
         return
-
  
 main()
